@@ -12,7 +12,9 @@ class Bili:
 			'Host': 'api.bilibili.com',
 			'Origin': 'https://www.bilibili.com',
 			'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:75.0) Gecko/20100101 Firefox/75.0',
-			'Referer': 'https://www.bilibili.com'
+			'Referer': 'https://www.bilibili.com',
+			'TE': 'Trailers',
+			'Connection': 'keep-alive',
 		}
 	
 	def __enter__(self):
@@ -53,31 +55,42 @@ class Bili:
 		data = self.session.get(url=url, headers=self.headers).content.decode()
 		return data
 
-	def get_video(self, aid: str, cid: str, qn: int = 32):
-		url = f'https://api.bilibili.com/x/player/playurl?avid={aid}&cid={cid}&qn={qn}'
-		data = self.session.get(url, headers=self.headers).content
-		url = json.loads(data).get('data').get('durl')[0]
-		video = self.session.get(url.get('url'), headers=self.headers)
-		if video.status_code != 200:
-			video = self.session.get(url.get('backup_url')[0], headers=self.headers)
+	def get_video(self, bvid: str, cid: str, qn: int = 32):
+		'cid=177627094&bvid=BV1Bt4y1U7gm&qn=80&type=&otype=json&fourk=1&fnver=0&fnval=16&session=a663cbd758c8a772e6f1b1f864b1bd1a'
+		self.headers.update({'Referer': f'https://www.bilibili.com/{bvid}'})
+		url = f'https://api.bilibili.com/x/player/playurl?cid={cid}&bvid={bvid}&qn={qn}&otype=json&fourk=1&fnver=0&fnval=16'
+		data = self.session.get(url, headers=self.headers).content.decode()
+		try:
+			url = json.loads(data).get('data').get('dash').get('video')
+			url = url[(len(url) + 1) // 2]
+			video = self.session.get(url.get('base_url'), headers=self.headers)
 			if video.status_code != 200:
-				return -1
-		ext = '.flv'
+				video = self.session.get(url.get('backup_url')[0], headers=self.headers)
+				if video.status_code != 200:
+					return -1
+			if '.flv' in url:
+				ext = '.flv'
+			else:
+				ext = '.m4s'
+		except Exception:
+			return -1
 		abspath = os.path.join(os.path.dirname(__file__), str(hash(video))) + ext
 		with open(abspath, 'wb') as f:
 			f.write(video.content)
+		return 1
 
 
 if __name__ == '__main__':
 	with Bili() as bili:
-		aid, cid = bili.get_aid(bv='BV1bz411q7XU')
-		tv_data = bili.get_tv_data(aid=aid)
-		tv_commit = bili.get_commit(aid=aid,)
-		tv_dm = bili.get_dm(oid=cid)
-		print(aid, cid)
-		print(tv_data)
-		print(tv_commit[1])
-		print(tv_dm)
-		bili.get_video(aid, cid, 32)
+		bv = 'BV1b54y1d7fZ'
+		aid, cid = bili.get_aid(bv=bv)
+		# tv_data = bili.get_tv_data(aid=aid)
+		# tv_commit = bili.get_commit(aid=aid,)
+		# tv_dm = bili.get_dm(oid=cid)
+		print({'aid': aid, 'cid': cid})
+		# print(tv_data)
+		# print(tv_commit[1])
+		# print(tv_dm)
+		print(bili.get_video(bv, cid, 80))
 
 

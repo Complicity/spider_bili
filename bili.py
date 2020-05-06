@@ -49,15 +49,12 @@ class Bili:
 	def get_video(self, aid: str, cid: str, qn: int = 32):
 		url = f'https://api.bilibili.com/x/player/playurl?avid={aid}&cid={cid}&qn={qn}'
 		data = self.session.get(url, headers=self.headers).content
-		url = json.loads(data).get('data').get('durl')[0].get('url')
-		now = time.time()
-		video = self.session.get(url, headers=self.headers).content
-		if time.time() - now < 5:
-			print(url)
-			url = json.loads(data).get('data').get('durl')[0].get('backup_url')[0]
-			print(url)
-			video = self.session.get(url, headers=self.headers)
-			print(video.status_code)
+		url = json.loads(data).get('data').get('durl')[0]
+		video = self.session.get(url.get('url'), headers=self.headers)
+		if video.status_code != 200:
+			video = self.session.get(url.get('backup_url')[0], headers=self.headers)
+			if video.status_code != 200:
+				return -1
 		if '.flv' in url:
 			path = './dd.flv'
 		else:
@@ -68,11 +65,11 @@ class Bili:
 
 if __name__ == '__main__':
 	with Bili() as bili:
-		aid, cid = bili.get_aid(bv='BV1aZ4y1s7NN')
+		aid, cid = bili.get_aid(bv='BV1bz411q7XU')
 		# tv_data = get_tv_data(aid=aid, headers=self.headers)
 		# tv_commit = get_commit(aid=aid, page=1, headers=self.headers)
 		# tv_dm = get_dm(oid=cid, headers=self.headers)
-		print(aid, cid)
+		# print(aid, cid)
 		# print(tv_data)
 		# print(tv_commit[1])
 		# print(tv_dm)

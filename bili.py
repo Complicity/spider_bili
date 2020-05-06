@@ -1,7 +1,8 @@
 import requests
 import typing
 import json
-import time
+import os
+import random
 
 
 class Bili:
@@ -25,14 +26,20 @@ class Bili:
 		data = self.session.get(url=url, headers=self.headers).content.decode()
 		return json.loads(data).get('data')
 
-	def get_commit(self, aid: str, page: int = 1):
-		url = f'https://api.bilibili.com/x/v2/reply?jsonp=jsonp&pn={page}&type=1&oid={aid}&sort=2'
-		data = self.session.get(url=url, headers=self.headers).content.decode()
-		data_list: list = json.loads(data).get('data').get('replies')
+	def get_commit(self, aid: str):
 		commit_list = []
-		for data in data_list:
-			commit_list.append(
-				[data.get('member').get('mid'), data.get('member').get('uname'), data.get('content').get('message')])
+		page = 1
+		while True:
+			url = f'https://api.bilibili.com/x/v2/reply?jsonp=jsonp&pn={page}&type=1&oid={aid}&sort=2'
+			page += 1
+			data = self.session.get(url=url, headers=self.headers)
+			try:
+				data_list: list = json.loads(data.content.decode()).get('data').get('replies')
+				for data in data_list:
+					commit_list.append(
+						[data.get('member').get('mid'), data.get('member').get('uname'), data.get('content').get('message')])
+			except TypeError:
+				break
 		return commit_list
 
 	def get_aid(self, bv: str) -> list:
@@ -55,24 +62,22 @@ class Bili:
 			video = self.session.get(url.get('backup_url')[0], headers=self.headers)
 			if video.status_code != 200:
 				return -1
-		if '.flv' in url:
-			path = './dd.flv'
-		else:
-			path = './dd.mp4'
-		with open(path, 'wb') as f:
+		ext = '.flv'
+		abspath = os.path.join(os.path.dirname(__file__), str(hash(video))) + ext
+		with open(abspath, 'wb') as f:
 			f.write(video.content)
 
 
 if __name__ == '__main__':
 	with Bili() as bili:
 		aid, cid = bili.get_aid(bv='BV1bz411q7XU')
-		# tv_data = get_tv_data(aid=aid, headers=self.headers)
-		# tv_commit = get_commit(aid=aid, page=1, headers=self.headers)
-		# tv_dm = get_dm(oid=cid, headers=self.headers)
-		# print(aid, cid)
-		# print(tv_data)
-		# print(tv_commit[1])
-		# print(tv_dm)
+		tv_data = bili.get_tv_data(aid=aid)
+		tv_commit = bili.get_commit(aid=aid,)
+		tv_dm = bili.get_dm(oid=cid)
+		print(aid, cid)
+		print(tv_data)
+		print(tv_commit[1])
+		print(tv_dm)
 		bili.get_video(aid, cid, 32)
 
 
